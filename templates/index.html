@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>PNG Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --glow-bar-width: 5px;
+            --glow-bar-length: 200px;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .app-header {
+            height: 60px;
+            text-align: center;
+            font-size: 2em;
+            line-height: 60px;
+            background: linear-gradient(90deg, #0ff, #f0f, #0ff);
+            animation: headerAnimation 3s ease-in-out infinite alternate;
+            flex-shrink: 0;
+        }
+        @keyframes headerAnimation {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.5); }
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+        .fixed-box {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .drop-zone {
+            width: 90%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 2px dashed #0ff;
+            border-radius: 10px;
+            box-sizing: border-box;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .drop-zone:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 20px #0ff;
+        }
+        .drop-zone.dragover {
+            transform: scale(1.03);
+            background: #111;
+            border-style: solid;
+            border-width: 4px;
+            animation: borderGlow 1s infinite alternate;
+        }
+        .drop-zone.left.dragover {
+            border-color: #00f;
+            box-shadow: 0 0 25px rgba(0, 0, 255, 0.7);
+        }
+        .drop-zone.right.dragover {
+            border-color: #f00;
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.7);
+        }
+        .drop-zone::before,
+        .drop-zone::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: var(--glow-bar-length);
+            height: var(--glow-bar-width);
+            transform: translate(-50%, -50%);
+            transform-origin: center;
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .drop-zone::before {
+            background: linear-gradient(90deg, rgba(0,255,255,0.3), transparent);
+            animation: rotateGlowBarClockwise 5s linear infinite;
+        }
+        .drop-zone::after {
+            background: linear-gradient(90deg, rgba(255,255,255,0.2), transparent);
+            animation: rotateGlowBarCounterClockwise 5s linear infinite;
+        }
+        .drop-zone.left.dragover::before {
+            background: linear-gradient(90deg, rgba(0,0,255,0.3), transparent);
+        }
+        .drop-zone.left.dragover::after {
+            background: linear-gradient(90deg, rgba(0,0,255,0.15), transparent);
+        }
+        .drop-zone.right.dragover::before {
+            background: linear-gradient(90deg, rgba(255,0,0,0.3), transparent);
+        }
+        .drop-zone.right.dragover::after {
+            background: linear-gradient(90deg, rgba(255,0,0,0.15), transparent);
+        }
+        @keyframes rotateGlowBarClockwise {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes rotateGlowBarCounterClockwise {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+        @keyframes borderGlow {
+            from { border-width: 2px; border-style: dashed; }
+            to { border-width: 4px; border-style: solid; }
+        }
+        .icon {
+            font-size: 25px;
+            margin-bottom: 20px;
+            z-index: 1;
+        }
+        .hidden {
+            display: none;
+        }
+        .progress-section {
+            width: 80%;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .progress-label {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #0ff;
+            border-radius: 10px;
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .fixed-box {
+                width: 100%;
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">PNG Converter</div>
+    <div class="main-container">
+        <div class="fixed-box">
+            <div class="drop-zone left" id="encodeZone">
+                <span class="icon">📁→🖼️</span>
+                <h2>Drag a file to convert to PNG</h2>
+                <input type="file" id="encodeInput" class="hidden">
+                <div id="encodeUploadProgressSection" class="progress-section">
+                    <div class="progress-label">Uploading File...</div>
+                    <div class="progress-container">
+                        <div id="encodeUploadProgressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+                <div id="encodeProcessingProgressSection" class="progress-section">
+                    <div class="progress-label">Processing File...</div>
+                    <div class="progress-container">
+                        <div id="encodeProcessingProgressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="fixed-box">
+            <div class="drop-zone right" id="decodeZone">
+                <span class="icon">🖼️→📁</span>
+                <h2>Drag a PNG to extract the file</h2>
+                <input type="file" id="decodeInput" class="hidden">
+                <div id="decodeUploadProgressSection" class="progress-section">
+                    <div class="progress-label">Uploading File...</div>
+                    <div class="progress-container">
+                        <div id="decodeUploadProgressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+                <div id="decodeProcessingProgressSection" class="progress-section">
+                    <div class="progress-label">Processing File...</div>
+                    <div class="progress-container">
+                        <div id="decodeProcessingProgressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let activeEncodeJobId = null;
+        let activeDecodeJobId = null;
+        const sendCancelRequest = jobIdentifier => {
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(`/cancel/${jobIdentifier}`);
+            } else {
+                const xhrCancel = new XMLHttpRequest();
+                xhrCancel.open('POST', `/cancel/${jobIdentifier}`, false);
+                xhrCancel.send();
+            }
+        };
+        window.addEventListener('beforeunload', () => {
+            if (activeEncodeJobId) sendCancelRequest(activeEncodeJobId);
+            if (activeDecodeJobId) sendCancelRequest(activeDecodeJobId);
+        });
+        const handleDragOverEvent = eventObject => {
+            eventObject.preventDefault();
+            eventObject.currentTarget.classList.add('dragover');
+        };
+        const handleDragLeaveEvent = eventObject => {
+            eventObject.preventDefault();
+            eventObject.currentTarget.classList.remove('dragover');
+        };
+        const uploadFileWithSequentialProgress = (eventObject, targetEndpointUrl, uploadProgressBarElement, uploadProgressSectionElement, processingProgressBarElement, processingProgressSectionElement, setActiveJobIdCallback) => {
+            eventObject.preventDefault();
+            eventObject.currentTarget.classList.remove('dragover');
+            const selectedUploadedFile = eventObject.dataTransfer.files[0];
+            if (!selectedUploadedFile) return;
+            uploadProgressSectionElement.style.display = 'block';
+            processingProgressSectionElement.style.display = 'none';
+            const formDataForUpload = new FormData();
+            formDataForUpload.append('file', selectedUploadedFile);
+            const xmlHttpRequestForUpload = new XMLHttpRequest();
+            xmlHttpRequestForUpload.open('POST', targetEndpointUrl);
+            xmlHttpRequestForUpload.upload.onprogress = uploadProgressEvent => {
+                const uploadProgressPercentage = Math.round((uploadProgressEvent.loaded / uploadProgressEvent.total) * 100);
+                uploadProgressBarElement.style.width = uploadProgressPercentage + '%';
+            };
+            xmlHttpRequestForUpload.onload = () => {
+                if (xmlHttpRequestForUpload.status === 200) {
+                    uploadProgressSectionElement.style.display = 'none';
+                    processingProgressSectionElement.style.display = 'block';
+                    const responseData = JSON.parse(xmlHttpRequestForUpload.responseText);
+                    setActiveJobIdCallback(responseData.job_id);
+                    pollProcessingStatus(responseData.job_id, processingProgressBarElement, processingProgressSectionElement);
+                } else {
+                    alert('Error: ' + xmlHttpRequestForUpload.responseText);
+                }
+            };
+            xmlHttpRequestForUpload.send(formDataForUpload);
+        };
+        const pollProcessingStatus = (jobIdentifier, processingProgressBarElement, processingProgressSectionElement) => {
+            const pollingIntervalIdentifier = setInterval(() => {
+                fetch(`/status/${jobIdentifier}`)
+                    .then(responseObject => responseObject.json())
+                    .then(statusData => {
+                        processingProgressBarElement.style.width = statusData.progress + '%';
+                        if (statusData.status === 'complete' || statusData.status === 'cancelled') {
+                            clearInterval(pollingIntervalIdentifier);
+                            window.location.href = `/download/${jobIdentifier}`;
+                        }
+                        if (statusData.status === 'error') {
+                            clearInterval(pollingIntervalIdentifier);
+                            alert('Error: ' + statusData.error);
+                        }
+                    });
+            }, 500);
+        };
+        const handleDropEventForEncode = eventObject => uploadFileWithSequentialProgress(
+            eventObject,
+            '/encode',
+            document.getElementById('encodeUploadProgressBar'),
+            document.getElementById('encodeUploadProgressSection'),
+            document.getElementById('encodeProcessingProgressBar'),
+            document.getElementById('encodeProcessingProgressSection'),
+            jobId => { activeEncodeJobId = jobId; }
+        );
+        const handleDropEventForDecode = eventObject => uploadFileWithSequentialProgress(
+            eventObject,
+            '/decode',
+            document.getElementById('decodeUploadProgressBar'),
+            document.getElementById('decodeUploadProgressSection'),
+            document.getElementById('decodeProcessingProgressBar'),
+            document.getElementById('decodeProcessingProgressSection'),
+            jobId => { activeDecodeJobId = jobId; }
+        );
+        document.getElementById('encodeZone').addEventListener('dragover', handleDragOverEvent);
+        document.getElementById('encodeZone').addEventListener('dragleave', handleDragLeaveEvent);
+        document.getElementById('encodeZone').addEventListener('drop', handleDropEventForEncode);
+        document.getElementById('decodeZone').addEventListener('dragover', handleDragOverEvent);
+        document.getElementById('decodeZone').addEventListener('dragleave', handleDragLeaveEvent);
+        document.getElementById('decodeZone').addEventListener('drop', handleDropEventForDecode);
+        const resizeGlowBars = () => {
+            document.querySelectorAll('.drop-zone').forEach(dropZoneElement => {
+                const boundingRectangle = dropZoneElement.getBoundingClientRect();
+                const calculatedBarWidth = Math.min(boundingRectangle.width, boundingRectangle.height) / 10;
+                const calculatedBarLength = Math.max(boundingRectangle.width, boundingRectangle.height) * 2;
+                dropZoneElement.style.setProperty('--glow-bar-width', `${calculatedBarWidth}px`);
+                dropZoneElement.style.setProperty('--glow-bar-length', `${calculatedBarLength}px`);
+            });
+        };
+        window.addEventListener('resize', resizeGlowBars);
+        window.addEventListener('DOMContentLoaded', resizeGlowBars);
+    </script>
+</body>
+</html>
